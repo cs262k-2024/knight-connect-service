@@ -1,19 +1,26 @@
 CREATE TABLE User (
     id TEXT AS UUID PRIMARY KEY,
-    username TEXT,
+    username TEXT NOT NULL,
     role TEXT,
-    email TEXT,
+    email TEXT NOT NULL,
     preferences LIST<TEXT>,
-    password TEXT
+    passwordhash TEXT NOT NULL,
+    bio TEXT
 );
 
 CREATE TABLE Event (
     id TEXT AS UUID PRIMARY KEY,
-    date timestamp,
-    venue TEXT AS UUID
+    title TEXT NOT NULL,
+    start TIMESTAMP NOT NULL,
+    price TEXT,
+    location TEXT,
+    description TEXT,
+    pictureurl TEXT,
+    eventtype TEXT
 );
 
-CREATE TABLE Venue (
-    id STRING AS UUID PRIMARY KEY,
-    location TEXT
+CREATE TABLE UserEvent (
+    userID TEXT AS UUID REFERENCES User(id),
+    eventID TEXT AS UUID REFERENCES Event(id)
 );
+
