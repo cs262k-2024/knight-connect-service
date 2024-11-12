@@ -4,7 +4,7 @@
     "scripts": {
         "start": "tsc && node dist/index.js",
         "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-        "lint": "eslint \"**/*.{ts}\"",
+        "lint": "eslint . --ext .ts",
         "lint:fix": "eslint --fix --ext .ts ."
     },
     "dependencies": {
