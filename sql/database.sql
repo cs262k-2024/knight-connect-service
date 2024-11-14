@@ -1,5 +1,9 @@
+DROP TABLE IF EXISTS UserEvent;
+DROP TABLE IF EXISTS User;
+DROP TABLE IF EXISTS Event;
+
 CREATE TABLE User (
-    id TEXT AS UUID PRIMARY KEY,
+    id UUID PRIMARY KEY,
     username TEXT NOT NULL,
     role TEXT,
     email TEXT NOT NULL,
@@ -9,7 +13,7 @@ CREATE TABLE User (
 );
 
 CREATE TABLE Event (
-    id TEXT AS UUID PRIMARY KEY,
+    id UUID PRIMARY KEY,
     title TEXT NOT NULL,
     time TIMESTAMP NOT NULL,
     price TEXT,
@@ -20,7 +24,7 @@ CREATE TABLE Event (
 );
 
 CREATE TABLE UserEvent (
-    userID TEXT AS UUID REFERENCES User(id),
-    eventID TEXT AS UUID REFERENCES Event(id)
+    userID UUID REFERENCES User(id),
+    eventID UUID REFERENCES Event(id)
 );
 
