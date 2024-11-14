@@ -16,6 +16,7 @@ CREATE TABLE Event (
     id UUID PRIMARY KEY,
     title TEXT NOT NULL,
     time TIMESTAMP NOT NULL,
+    starttime TIMESTAMP NOT NULL,
     price TEXT,
     location TEXT,
     description TEXT,
