@@ -11,7 +11,7 @@ CREATE TABLE User (
 CREATE TABLE Event (
     id TEXT AS UUID PRIMARY KEY,
     title TEXT NOT NULL,
-    start TIMESTAMP NOT NULL,
+    time TIMESTAMP NOT NULL,
     price TEXT,
     location TEXT,
     description TEXT,
