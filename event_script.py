@@ -1,14 +1,22 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
+import os
 
+import pytz
 import requests
 from bs4 import BeautifulSoup
+import psycopg
 
+DBHOST = os.environ['DBHOST']
+DBPORT = os.environ['DBPORT']
+DBNAME = os.environ['DBNAME']
+DBUSER = os.environ['DBUSER']
+DBPSWD = os.environ['DBPSWD']
 
 @dataclass
 class Event:
     title: str
-    timestamp: int
+    timestamp: datetime
     price: str | None
     location: str | None
     description: str | None
@@ -27,20 +35,21 @@ def check_day(day: str):
     assert 1 <= day <= 31, "day must be between 1 and 31"
 
 
-def date_to_timestamp(date: str) -> int:
+def to_timestamp(date: str, time: str) -> int:
+    time_format = '%I:%M %p'
+    time = time.split('–')[0].strip()
+
     date_format = '%b %d, %Y'
     if '–' in date:
         year = date.split(',')[1].strip()
         day = date.split('–')[0].strip()
         date = day + ', ' + year
-    return int(datetime.strptime(date, date_format).timestamp())
 
+    result = datetime.strptime(date + ' ' + time, date_format + ' ' + time_format)
+    est = pytz.timezone('America/New_York')
+    result = result.astimezone(est)
 
-def time_to_timestamp(time: str) -> int:
-    time_format = '%I:%M %p'
-    time = time.split('–')[0].strip()
-    time = datetime.strptime(time, time_format).time()
-    return (time.hour + 4) * 3600 + time.minute * 60 + time.second # EST time + daylight saving is 4 hours ahead of UTC
+    return result
 
 
 def get_data(day: str):
@@ -77,7 +86,7 @@ def extract_event(event):
     title = event.find('h4', class_='event-calendar__title').text.strip()
     time = event.find(
         'div', class_='event-calendar__date-location__date').text.strip()
-    timestamp = date_to_timestamp(date) + time_to_timestamp(time)
+    timestamp = to_timestamp(date, time)
     location = event.find(
         'div', class_='event-calendar__date-location__location')
     if location is not None:
@@ -105,12 +114,40 @@ def get_events(day: str):
     return [extract_event(event) for event in data]
 
 
+def generate_dates(start_date_str):
+    # Parse the start date from the given string
+    start_date = datetime.strptime(start_date_str, '%Y%m%d')
+    
+    # Generate dates day by day
+    current_date = start_date
+    while True:
+        # Print the current date in YYYYMMDD format
+        yield current_date.strftime('%Y%m%d')
+        
+        # Move to the next day
+        current_date += timedelta(days=1)
+
+
 def main():
-    # Example usage
-    day = input('day: ')
-    events = get_events(day)
-    for event in events:
-        print(event)
+    start_day = input('start_day: ')
+    day_count = int(input('day_count: '))
+    date_gen = generate_dates(start_day)
+    conn_str = f'host={DBHOST} port={DBPORT} dbname={DBNAME} user={DBUSER} password={DBPSWD} connect_timeout=10 sslmode=require'
+    print(f'Connection Params: {conn_str}')
+    with psycopg.connect(conn_str) as conn:
+        print('db connected')
+        for _ in range(day_count):
+            day = next(date_gen)
+            print(f'Getting day {day}... ', end='')
+            events = get_events(day)
+            print(f'{len(events)} events... ', end='')
+            with conn.cursor() as cur:
+                for event in events:
+                    cur.execute(
+                        'INSERT INTO Event (id, title, time, starttime, price, location, description, pictureurl) VALUES (gen_random_uuid(), %s, %s, %s, %s, %s, %s, %s)',
+                        (event.title, event.timestamp, datetime.strptime(day, '%Y%m%d'), event.price, event.location, event.description, event.picture))
+                conn.commit()
+            print('done')
 
 
 if __name__ == '__main__':
