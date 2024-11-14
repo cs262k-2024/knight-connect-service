@@ -1,10 +1,10 @@
-DROP TABLE IF EXISTS UserEvent;
-DROP TABLE IF EXISTS User;
+DROP TABLE IF EXISTS AccountEvent;
+DROP TABLE IF EXISTS Account;
 DROP TABLE IF EXISTS Event;
 
-CREATE TABLE User (
+CREATE TABLE Account (
     id UUID PRIMARY KEY,
-    username TEXT NOT NULL,
+    name TEXT NOT NULL,
     role TEXT,
     email TEXT NOT NULL,
     preferences LIST<TEXT>,
@@ -23,8 +23,8 @@ CREATE TABLE Event (
     eventtype TEXT
 );
 
-CREATE TABLE UserEvent (
-    userID UUID REFERENCES User(id),
+CREATE TABLE AccountEvent (
+    accountID UUID REFERENCES Account(id),
     eventID UUID REFERENCES Event(id)
 );
 
