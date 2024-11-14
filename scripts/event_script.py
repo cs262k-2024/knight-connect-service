@@ -1,17 +1,22 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
+import os
 
+import pytz
 import requests
 from bs4 import BeautifulSoup
+import psycopg
 
+DBHOST = os.environ['DBHOST']
+DBPORT = os.environ['DBPORT']
+DBNAME = os.environ['DBNAME']
+DBUSER = os.environ['DBUSER']
+DBPSWD = os.environ['DBPSWD']
 
 @dataclass
 class Event:
     title: str
-    start_date: str
-    end_date: str
-    start_time: str
-    end_time: str
+    timestamp: datetime
     price: str | None
     location: str | None
     description: str | None
@@ -30,58 +35,21 @@ def check_day(day: str):
     assert 1 <= day <= 31, "day must be between 1 and 31"
 
 
-def convert_to_postgres_time(time_range: str) -> str:
-    # Define the input time format and the PostgreSQL format
-    time_format = "%I:%M %p"  # 12-hour format with AM/PM
+def to_timestamp(date: str, time: str) -> int:
+    time_format = '%I:%M %p'
+    time = time.split('–')[0].strip()
 
-    # Split the input string by the '–' (en dash)
-    start_time_str, end_time_str = time_range.split('–')
+    date_format = '%b %d, %Y'
+    if '–' in date:
+        year = date.split(',')[1].strip()
+        day = date.split('–')[0].strip()
+        date = day + ', ' + year
 
-    # Strip any leading/trailing whitespace
-    start_time_str = start_time_str.strip()
-    end_time_str = end_time_str.strip()
+    result = datetime.strptime(date + ' ' + time, date_format + ' ' + time_format)
+    est = pytz.timezone('America/New_York')
+    result = result.astimezone(est)
 
-    # Convert the times to 24-hour format using strptime
-    start_time = datetime.strptime(start_time_str, time_format).time()
-    end_time = datetime.strptime(end_time_str, time_format).time()
-
-    # Return the start and end times in PostgreSQL-compatible time format
-    return start_time.strftime('%H:%M:%S'), end_time.strftime('%H:%M:%S')
-
-
-def convert_to_postgres_date(date_str):
-    # Define the date format for both single dates and ranges
-    date_format = "%b %d, %Y"  # Abbreviated month name, day, and year (e.g., "Sep 03, 2024")
-
-    # Check if the input string contains a date range (indicated by an en dash '–')
-    if '–' in date_str:
-        # Split the range into start and end dates
-        start_date_str, end_date_str = date_str.split('–')
-
-        # Strip whitespace
-        start_date_str = start_date_str.strip()
-        end_date_str = end_date_str.strip()
-
-        # Ensure that the start date has the year (add the year from the end date if missing)
-        # Check if the start date string has the year, and add the year from the end date if not
-        if len(start_date_str.split(',')) == 1:  # No year found
-            start_date_str = f"{start_date_str}, {end_date_str.split(', ')[1]}"
-
-        # Parse both dates using strptime
-        start_date = datetime.strptime(start_date_str, date_format).date()
-        end_date = datetime.strptime(end_date_str, date_format).date()
-
-        # Return both start and end dates in PostgreSQL format (YYYY-MM-DD)
-        return start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')
-
-    else:
-        # Handle a single date
-        date_str = date_str.strip()
-        date_obj = datetime.strptime(date_str, date_format).date()
-
-        # Return the date in PostgreSQL format
-        result = date_obj.strftime('%Y-%m-%d')
-        return result, result
+    return result
 
 
 def get_data(day: str):
@@ -115,11 +83,10 @@ def get_data(day: str):
 
 def extract_event(event):
     date = event.find('div', class_='event-calendar__date').text.strip()
-    start_date, end_date = convert_to_postgres_date(date)
     title = event.find('h4', class_='event-calendar__title').text.strip()
     time = event.find(
         'div', class_='event-calendar__date-location__date').text.strip()
-    start_time, end_time = convert_to_postgres_time(time)
+    timestamp = to_timestamp(date, time)
     location = event.find(
         'div', class_='event-calendar__date-location__location')
     if location is not None:
@@ -133,26 +100,54 @@ def extract_event(event):
         price = price.text.strip()
     picture = event.find('img')
     if picture is not None:
-        picture = picture['src']
-    return Event(title, start_date, end_date, start_time, end_time, price, location, description, picture)
+        picture = 'https://calvin.edu' + picture['src']
+    return Event(title, timestamp, price, location, description, picture)
 
 
 def get_events(day: str):
-    '''
+    """
     Call this function to get a list of events for a specific day.
     The day must be in the format 'YYYYMMDD'.
     Exceptions will be raised if anything goes wrong, so make sure to catch them.
-    '''
+    """
     data = get_data(day)
     return [extract_event(event) for event in data]
 
 
+def generate_dates(start_date_str):
+    # Parse the start date from the given string
+    start_date = datetime.strptime(start_date_str, '%Y%m%d')
+    
+    # Generate dates day by day
+    current_date = start_date
+    while True:
+        # Print the current date in YYYYMMDD format
+        yield current_date.strftime('%Y%m%d')
+        
+        # Move to the next day
+        current_date += timedelta(days=1)
+
+
 def main():
-    # Example usage
-    day = input('day: ')
-    events = get_events(day)
-    for event in events:
-        print(event)
+    start_day = input('start_day: ')
+    day_count = int(input('day_count: '))
+    date_gen = generate_dates(start_day)
+    conn_str = f'host={DBHOST} port={DBPORT} dbname={DBNAME} user={DBUSER} password={DBPSWD} connect_timeout=10 sslmode=require'
+    print(f'Connection Params: {conn_str}')
+    with psycopg.connect(conn_str) as conn:
+        print('db connected')
+        for _ in range(day_count):
+            day = next(date_gen)
+            print(f'Getting day {day}... ', end='')
+            events = get_events(day)
+            print(f'{len(events)} events... ', end='')
+            with conn.cursor() as cur:
+                for event in events:
+                    cur.execute(
+                        'INSERT INTO Event (id, title, time, starttime, price, location, description, pictureurl) VALUES (gen_random_uuid(), %s, %s, %s, %s, %s, %s, %s)',
+                        (event.title, event.timestamp, datetime.strptime(day, '%Y%m%d'), event.price, event.location, event.description, event.picture))
+                conn.commit()
+            print('done')
 
 
 if __name__ == '__main__':
