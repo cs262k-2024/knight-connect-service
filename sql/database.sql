@@ -7,7 +7,7 @@ CREATE TABLE Account (
     name TEXT NOT NULL,
     role TEXT,
     email TEXT NOT NULL,
-    preferences LIST<TEXT>,
+    preferences TEXT[],
     passwordhash TEXT NOT NULL,
     bio TEXT
 );
