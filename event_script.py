@@ -8,10 +8,7 @@ from bs4 import BeautifulSoup
 @dataclass
 class Event:
     title: str
-    start_date: str
-    end_date: str
-    start_time: str
-    end_time: str
+    timestamp: int
     price: str | None
     location: str | None
     description: str | None
@@ -30,58 +27,20 @@ def check_day(day: str):
     assert 1 <= day <= 31, "day must be between 1 and 31"
 
 
-def convert_to_postgres_time(time_range: str) -> str:
-    # Define the input time format and the PostgreSQL format
-    time_format = "%I:%M %p"  # 12-hour format with AM/PM
-
-    # Split the input string by the '–' (en dash)
-    start_time_str, end_time_str = time_range.split('–')
-
-    # Strip any leading/trailing whitespace
-    start_time_str = start_time_str.strip()
-    end_time_str = end_time_str.strip()
-
-    # Convert the times to 24-hour format using strptime
-    start_time = datetime.strptime(start_time_str, time_format).time()
-    end_time = datetime.strptime(end_time_str, time_format).time()
-
-    # Return the start and end times in PostgreSQL-compatible time format
-    return start_time.strftime('%H:%M:%S'), end_time.strftime('%H:%M:%S')
+def date_to_timestamp(date: str) -> int:
+    date_format = '%b %d, %Y'
+    if '–' in date:
+        year = date.split(',')[1].strip()
+        day = date.split('–')[0].strip()
+        date = day + ', ' + year
+    return int(datetime.strptime(date, date_format).timestamp())
 
 
-def convert_to_postgres_date(date_str):
-    # Define the date format for both single dates and ranges
-    date_format = "%b %d, %Y"  # Abbreviated month name, day, and year (e.g., "Sep 03, 2024")
-
-    # Check if the input string contains a date range (indicated by an en dash '–')
-    if '–' in date_str:
-        # Split the range into start and end dates
-        start_date_str, end_date_str = date_str.split('–')
-
-        # Strip whitespace
-        start_date_str = start_date_str.strip()
-        end_date_str = end_date_str.strip()
-
-        # Ensure that the start date has the year (add the year from the end date if missing)
-        # Check if the start date string has the year, and add the year from the end date if not
-        if len(start_date_str.split(',')) == 1:  # No year found
-            start_date_str = f"{start_date_str}, {end_date_str.split(', ')[1]}"
-
-        # Parse both dates using strptime
-        start_date = datetime.strptime(start_date_str, date_format).date()
-        end_date = datetime.strptime(end_date_str, date_format).date()
-
-        # Return both start and end dates in PostgreSQL format (YYYY-MM-DD)
-        return start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')
-
-    else:
-        # Handle a single date
-        date_str = date_str.strip()
-        date_obj = datetime.strptime(date_str, date_format).date()
-
-        # Return the date in PostgreSQL format
-        result = date_obj.strftime('%Y-%m-%d')
-        return result, result
+def time_to_timestamp(time: str) -> int:
+    time_format = '%I:%M %p'
+    time = time.split('–')[0].strip()
+    time = datetime.strptime(time, time_format).time()
+    return (time.hour + 4) * 3600 + time.minute * 60 + time.second # EST time + daylight saving is 4 hours ahead of UTC
 
 
 def get_data(day: str):
@@ -115,11 +74,10 @@ def get_data(day: str):
 
 def extract_event(event):
     date = event.find('div', class_='event-calendar__date').text.strip()
-    start_date, end_date = convert_to_postgres_date(date)
     title = event.find('h4', class_='event-calendar__title').text.strip()
     time = event.find(
         'div', class_='event-calendar__date-location__date').text.strip()
-    start_time, end_time = convert_to_postgres_time(time)
+    timestamp = date_to_timestamp(date) + time_to_timestamp(time)
     location = event.find(
         'div', class_='event-calendar__date-location__location')
     if location is not None:
@@ -133,16 +91,16 @@ def extract_event(event):
         price = price.text.strip()
     picture = event.find('img')
     if picture is not None:
-        picture = picture['src']
-    return Event(title, start_date, end_date, start_time, end_time, price, location, description, picture)
+        picture = 'https://calvin.edu' + picture['src']
+    return Event(title, timestamp, price, location, description, picture)
 
 
 def get_events(day: str):
-    '''
+    """
     Call this function to get a list of events for a specific day.
     The day must be in the format 'YYYYMMDD'.
     Exceptions will be raised if anything goes wrong, so make sure to catch them.
-    '''
+    """
     data = get_data(day)
     return [extract_event(event) for event in data]
 

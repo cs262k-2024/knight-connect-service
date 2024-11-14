@@ -1,17 +1,21 @@
-CREATE TABLE User (
-    id TEXT AS UUID PRIMARY KEY,
-    username TEXT NOT NULL,
+DROP TABLE IF EXISTS AccountEvent;
+DROP TABLE IF EXISTS Account;
+DROP TABLE IF EXISTS Event;
+
+CREATE TABLE Account (
+    id UUID PRIMARY KEY,
+    name TEXT NOT NULL,
     role TEXT,
     email TEXT NOT NULL,
-    preferences LIST<TEXT>,
+    preferences TEXT[],
     passwordhash TEXT NOT NULL,
     bio TEXT
 );
 
 CREATE TABLE Event (
-    id TEXT AS UUID PRIMARY KEY,
+    id UUID PRIMARY KEY,
     title TEXT NOT NULL,
-    start TIMESTAMP NOT NULL,
+    time TIMESTAMP NOT NULL,
     price TEXT,
     location TEXT,
     description TEXT,
@@ -19,8 +23,8 @@ CREATE TABLE Event (
     eventtype TEXT
 );
 
-CREATE TABLE UserEvent (
-    userID TEXT AS UUID REFERENCES User(id),
-    eventID TEXT AS UUID REFERENCES Event(id)
+CREATE TABLE AccountEvent (
+    accountID UUID REFERENCES Account(id),
+    eventID UUID REFERENCES Event(id)
 );
 
