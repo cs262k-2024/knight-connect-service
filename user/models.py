@@ -1,0 +1,18 @@
+import uuid
+from django.db import models
+from django.contrib.postgres.fields import ArrayField
+
+class User(models.Model):
+    id = models.UUIDField(
+        primary_key=True, unique=True, blank=False, default=uuid.uuid4, editable=False
+    )
+
+    name = models.CharField(max_length=100)
+    email = models.EmailField(unique=True)
+    
+    preferences = ArrayField(
+        models.CharField(max_length=100),
+    )
+
+    password = models.CharField(max_length=255)
+    bio = models.TextField()
