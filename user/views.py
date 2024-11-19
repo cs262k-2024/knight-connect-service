@@ -8,6 +8,7 @@ from .serializers import serialize_user
 from .forms import UserCreationForm, UserValidationForm
 
 from event.models import Event
+from event.serializers import serialize_event
 
 class UserView(APIView):
     def get(self, request, user_id):
@@ -70,6 +71,22 @@ class JoinEventView(APIView):
         user.joined_events.add(event)
 
         return Response({'data': serialize_user(user)}, status=200)
+    
+    def get(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'message': f'User not found with id {user_id}'}, status=404)
+        
+        events = user.joined_events.all()
+        serialized_events = []
+
+        for event in events:
+            serialized = serialize_event(event)
+
+            serialized_events.append(serialized)
+
+        return Response({'data': serialized_events}, status=200)
 
 class ValidateUserView(APIView):
     def post(self, request):

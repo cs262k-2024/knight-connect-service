@@ -8,6 +8,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('user/<uuid:user_id>/', UserView.as_view()),
     path('user/', UserView.as_view()),
+    path('join/<uuid:user_id>/', JoinEventView.as_view()),
     path('join/', JoinEventView.as_view()),
     path('validate/', ValidateUserView.as_view()),
     path('event/<int:page>/', EventView.as_view()),
