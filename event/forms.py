@@ -7,11 +7,11 @@ class EventCreationForm(forms.Form):
     start_date = forms.DateTimeField()
     end_date = forms.DateTimeField()
 
-    price = forms.FloatField()
+    price = forms.FloatField(required=False)
 
     location = forms.CharField(max_length=255)
     description = forms.CharField(max_length=255)
-    tags = forms.CharField(max_length=255)
+    tags = forms.CharField(required=False)
 
-    cover_uri = forms.CharField()
+    cover_uri = forms.CharField(required=False)
     

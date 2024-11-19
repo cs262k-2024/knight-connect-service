@@ -1,3 +1,5 @@
+import json
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
@@ -5,7 +7,7 @@ from user.models import User
 
 from .models import Event
 from .forms import EventCreationForm
-from .serializers import EventSerializer
+from .serializers import serialize_event
 
 class EventView(APIView):
     def get(self, request, page):
@@ -14,12 +16,12 @@ class EventView(APIView):
         serialized_events = []
 
         for event in events:
-            serialized_events.append(EventSerializer(event).data)
+            serialized_events.append(serialize_event(event))
 
         return Response({'data': serialized_events}, status=200)
     
     def post(self, request):
-        if not request.data.get('tags'):
+        if request.data.get('tags') is None:
             return Response({'message': 'Invalid request'}, status=400)
 
         form = EventCreationForm({
@@ -51,7 +53,7 @@ class EventView(APIView):
             tags=request.data.get('tags'),
         )
 
-        return Response({'data': EventSerializer(event).data}, status=200)
+        return Response({'data': serialize_event(event)}, status=200)
 
 class EventsFromUserView(APIView):
     def get(self, request, user_id):
@@ -64,9 +66,11 @@ class EventsFromUserView(APIView):
         serialized_events = []
 
         for event in events:
-            serialized_events.append(EventSerializer(event).data)
+            serialized = serialize_event(event)
 
-        return Response({'data': events}, status=200)
+            serialized_events.append(serialized)
+
+        return Response({'data': serialized_events}, status=200)
 
 class EventsForUserView(APIView):
     def get(self, request, user_id):
@@ -91,6 +95,6 @@ class EventsForUserView(APIView):
                 if preference in event_tags:
                     event_count += 1
 
-                    serialized_events.append(EventSerializer(event).data)
+                    serialized_events.append(serialize_event(event))
 
         return Response({'data': serialized_events}, status=200)

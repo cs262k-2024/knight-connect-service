@@ -16,3 +16,5 @@ class User(models.Model):
 
     password = models.CharField(max_length=255)
     bio = models.TextField()
+
+    joined_events = models.ManyToManyField('event.Event', related_name='participants', blank=True)
