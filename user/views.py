@@ -111,3 +111,30 @@ class ValidateUserView(APIView):
             return Response({'message': 'Incorrect password'}, status=400)
 
         return Response({'data': serialize_user(user)}, status=200)
+
+class EditUserView(APIView):
+    def post(self, request):
+        data = request.data
+        user_id = data['user_id']
+
+        if not user_id:
+            return Response({'message': 'Invalid request data'}, status=400)
+
+        user = User.objects.get(id=user_id)
+
+        if name := data.get('name'):
+            user.name = name
+        if email := data.get('email'):
+            user.email = email
+        if preferences := data.get('preferences'):
+            user.preferences = preferences
+        if password := data.get('password'):
+            user.password = hashlib.sha256(password.encode('utf-8')).hexdigest()
+        if bio := data.get('bio'):
+            user.bio = bio
+
+        user.save()
+        serialized_user = serialize_user(user)
+
+        return Response({'data': serialized_user}, status=200)
+    

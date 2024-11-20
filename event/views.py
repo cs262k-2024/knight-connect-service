@@ -9,6 +9,15 @@ from .models import Event
 from .forms import EventCreationForm
 from .serializers import serialize_event
 
+class SpecificEventView(APIView):
+    def get(self, request, event_id):
+        try:
+            event = Event.objects.get(id=event_id)
+        except Event.DoesNotExist:
+            return Response({'message': f'Event does not exist with id {event_id}'}, status=404)
+        
+        return Response({'data': serialize_event(event)}, status=200)
+
 class EventView(APIView):
     def get(self, request, page):
         events = Event.objects.all()[page:(page + 15)]
