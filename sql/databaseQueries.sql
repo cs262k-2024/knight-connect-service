@@ -1,38 +1,96 @@
-SELECT * FROM User;
+-- GET Request: Retrieve a specific event by event_id
+SELECT * 
+FROM event 
+WHERE id = '<event_id>';
 
-SELECT * FROM Event
-WHERE start > '2024-01-01 00:00:00';
+-- GET Request: Retrieve events in paginated format
+SELECT * 
+FROM event
+ORDER BY date_created DESC
+LIMIT 15 OFFSET <page * 15>;
 
-SELECT User.id, User.username, User.email
-FROM User
-JOIN UserEvent ON User.id = UserEvent.userID
-WHERE UserEvent.eventID = '1234';
+-- Create new event
+SELECT * 
+FROM user
+WHERE id = '<organizer_id>';
 
-SELECT * FROM Event
-WHERE eventtype = 'concert';
+INSERT INTO event (
+    id, organizer_id, name, start_date, end_date, price, location, description, cover_uri, tags, date_created
+) VALUES (
+    gen_random_uuid(), '<organizer_id>', '<name>', '<start_date>', '<end_date>', <price>, '<location>', '<description>', '<cover_uri>', ARRAY['<tag1>', '<tag2>', ...], NOW()
+)
+RETURNING *;
 
-SELECT COUNT(eventID) AS event_count
-FROM UserEvent
-WHERE userID = '5678';
+-- GET Request: Retrieve events organized by a specific user
+SELECT * 
+FROM event
+WHERE organizer_id = '<user_id>'
+ORDER BY start_date DESC;
 
-SELECT Event.title, Event.start, User.username
-FROM Event
-JOIN UserEvent ON Event.id = UserEvent.eventID
-JOIN User ON UserEvent.userID = User.id
-ORDER BY Event.start;
+-- Events from user preferences
+SELECT * 
+FROM user
+WHERE id = '<user_id>';
 
-SELECT * FROM User
-WHERE role = 'admin';
+SELECT * 
+FROM event
+WHERE tags && ARRAY[<user_preferences>] -- Array overlap operator for PostgreSQL
+LIMIT 5;
 
-SELECT * FROM Event
-WHERE description ILIKE '%workshop%';
+-- USERS
 
-UPDATE User
-SET role = 'organizer'
-WHERE email = 'user@example.com';
+-- Get user
+SELECT * 
+FROM user 
+WHERE id = '<user_id>';
 
-DELETE FROM User
-WHERE id = '5678';
+-- Create user
+INSERT INTO user (
+    id, name, email, password, bio, preferences
+) VALUES (
+    gen_random_uuid(), '<name>', '<email>', '<hashed_password>', '<bio>', ARRAY['<preference1>', '<preference2>', ...]
+)
+RETURNING *;
 
-SELECT * FROM Event
-ORDER BY price DESC;
+-- Add user to event
+SELECT * 
+FROM user 
+WHERE id = '<user_id>';
+
+SELECT * 
+FROM event 
+WHERE id = '<event_id>';
+
+INSERT INTO event_user (user_id, event_id)
+VALUES ('<user_id>', '<event_id>')
+ON CONFLICT DO NOTHING; -- Prevent duplicates
+
+-- Get user joined events
+SELECT e.* 
+FROM event e
+JOIN event_user eu ON e.id = eu.event_id
+WHERE eu.user_id = '<user_id>';
+
+-- Validate user
+SELECT * 
+FROM user 
+WHERE email = '<email>';
+
+SELECT * 
+FROM user 
+WHERE email = '<email>' AND password = '<hashed_password>';
+
+-- Edit user profile
+SELECT * 
+FROM user 
+WHERE id = '<user_id>';
+
+UPDATE user
+SET 
+    name = COALESCE('<name>', name),
+    email = COALESCE('<email>', email),
+    preferences = COALESCE(ARRAY['<preference1>', '<preference2>', ...], preferences),
+    password = COALESCE('<hashed_password>', password),
+    bio = COALESCE('<bio>', bio)
+WHERE id = '<user_id>'
+RETURNING *;
