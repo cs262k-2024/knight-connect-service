@@ -37,6 +37,7 @@ CORS_ALLOWED_ORIGINS = [
 
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8081',
+    'https://knightconnect-aqe5cmfkaqgca7bw.canadacentral-01.azurewebsites.net',
 ]
 
 # Application definition
