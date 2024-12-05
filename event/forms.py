@@ -7,7 +7,7 @@ class EventCreationForm(forms.Form):
     start_date = forms.DateTimeField()
     end_date = forms.DateTimeField()
 
-    price = forms.FloatField(required=False)
+    price = forms.CharField(required=False)
 
     location = forms.CharField(max_length=255)
     description = forms.CharField(max_length=255)

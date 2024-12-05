@@ -17,7 +17,7 @@ class Event(models.Model):
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
 
-    price = models.FloatField(blank=True)
+    price = models.TextField(blank=True)
 
     location = models.CharField(max_length=255)
     description = models.CharField(max_length=255)
