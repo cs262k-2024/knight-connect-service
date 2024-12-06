@@ -16,12 +16,12 @@ DBPSWD = os.environ['DBPSWD']
 @dataclass
 class Event:
     name: str
-    start_date: float
-    end_date: float
-    price: float | None
-    location: str | None
-    description: str | None
-    cover_uri: str | None
+    start_date: datetime
+    end_date: datetime
+    price: str
+    location: str
+    description: str
+    cover_uri: str
 
 
 def check_day(day: str):
@@ -49,7 +49,7 @@ def to_timestamp(date: str, time: str) -> tuple[float, float]:
     start = datetime.strptime(date + ' ' + start, date_format + ' ' + time_format).astimezone(est)
     end = datetime.strptime(date + ' ' + end, date_format + ' ' + time_format).astimezone(est)
 
-    return start.timestamp(), end.timestamp()
+    return start, end
 
 
 def get_data(day: str):
@@ -90,20 +90,26 @@ def extract_event(date: str, event: BeautifulSoup) -> Event:
         'div', class_='event-calendar__date-location__location')
     if location is not None:
         location = location.text.strip()
+    else:
+        location = ''
     description = event.find('div', class_='event-calendar__summary')
     if description is not None:
         description = description.text.strip()
+        if len(description) > 255:
+            description = description[:255]
+    else:
+        description = ''
     price = event.find(
         'div', class_='field--name-field-price')
     if price is not None:
         price = price.text.strip()
-        try:
-            price = int(price)
-        except ValueError:
-            price = None
+    else:
+        price = ''
     picture = event.find('img')
     if picture is not None:
         picture: str = 'https://calvin.edu' + picture['src']
+    else:
+        picture = ''
     return Event(name, start, end, price, location, description, picture)
 
 
@@ -147,12 +153,11 @@ def main():
             with conn.cursor() as cur:
                 for event in events:
                     cur.execute(
-                        'INSERT INTO event_event (id, name, date_created, start_date, end_date, price, location, description, cover_uri, organizer_id) VALUES (gen_random_uuid(), %s, CURRENT_TIMESTAMP(), %s, %s, %s, %s, %s, %s, \'\')',
+                        'INSERT INTO event_event (id, name, date_created, start_date, end_date, price, location, description, cover_uri, tags, organizer_id) VALUES (gen_random_uuid(), %s, NOW(), %s, %s, %s, %s, %s, %s, \'{}\', \'81dd6d6f-e5b4-4395-a2db-e06ee489b9f0\')',
                         (event.name, event.start_date, event.end_date, event.price, event.location, event.description, event.cover_uri))
                 conn.commit()
             print('done')
 
 
 if __name__ == '__main__':
-    # main()
-    print(get_events('20241210'))
+    main()
