@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from dataclasses import dataclass
 import os
 
@@ -15,12 +15,13 @@ DBPSWD = os.environ['DBPSWD']
 
 @dataclass
 class Event:
-    title: str
-    timestamp: datetime
-    price: str | None
-    location: str | None
-    description: str | None
-    picture: str | None
+    name: str
+    start_date: datetime
+    end_date: datetime
+    price: str
+    location: str
+    description: str
+    cover_uri: str
 
 
 def check_day(day: str):
@@ -29,27 +30,26 @@ def check_day(day: str):
     assert day.isdigit(), "day must contain only digits"
     year = int(day[:4])
     month = int(day[4:6])
-    day = int(day[6:8])
+    day_num = int(day[6:8])
     assert 2000 <= year <= 2099, "year must be between 2000 and 2099"
     assert 1 <= month <= 12, "month must be between 1 and 12"
-    assert 1 <= day <= 31, "day must be between 1 and 31"
+    assert 1 <= day_num <= 31, "day must be between 1 and 31"
 
 
-def to_timestamp(date: str, time: str) -> int:
+def to_timestamp(date: str, time: str) -> tuple[float, float]:
     time_format = '%I:%M %p'
-    time = time.split('–')[0].strip()
+    start, end = time.split('–')
+    start.strip()
+    end.strip()
 
-    date_format = '%b %d, %Y'
-    if '–' in date:
-        year = date.split(',')[1].strip()
-        day = date.split('–')[0].strip()
-        date = day + ', ' + year
+    date_format = '%Y%m%d'
 
-    result = datetime.strptime(date + ' ' + time, date_format + ' ' + time_format)
     est = pytz.timezone('America/New_York')
-    result = result.astimezone(est)
 
-    return result
+    start = datetime.strptime(date + ' ' + start, date_format + ' ' + time_format).astimezone(est)
+    end = datetime.strptime(date + ' ' + end, date_format + ' ' + time_format).astimezone(est)
+
+    return start, end
 
 
 def get_data(day: str):
@@ -81,27 +81,36 @@ def get_data(day: str):
     return data
 
 
-def extract_event(event):
-    date = event.find('div', class_='event-calendar__date').text.strip()
-    title = event.find('h4', class_='event-calendar__title').text.strip()
+def extract_event(date: str, event: BeautifulSoup) -> Event:
+    name = event.find('h4', class_='event-calendar__title').text.strip()
     time = event.find(
         'div', class_='event-calendar__date-location__date').text.strip()
-    timestamp = to_timestamp(date, time)
+    start, end = to_timestamp(date, time)
     location = event.find(
         'div', class_='event-calendar__date-location__location')
     if location is not None:
         location = location.text.strip()
+    else:
+        location = ''
     description = event.find('div', class_='event-calendar__summary')
     if description is not None:
         description = description.text.strip()
+        if len(description) > 255:
+            description = description[:255]
+    else:
+        description = ''
     price = event.find(
         'div', class_='field--name-field-price')
     if price is not None:
         price = price.text.strip()
+    else:
+        price = ''
     picture = event.find('img')
     if picture is not None:
-        picture = 'https://calvin.edu' + picture['src']
-    return Event(title, timestamp, price, location, description, picture)
+        picture: str = 'https://calvin.edu' + picture['src']
+    else:
+        picture = ''
+    return Event(name, start, end, price, location, description, picture)
 
 
 def get_events(day: str):
@@ -111,10 +120,10 @@ def get_events(day: str):
     Exceptions will be raised if anything goes wrong, so make sure to catch them.
     """
     data = get_data(day)
-    return [extract_event(event) for event in data]
+    return [extract_event(day, event) for event in data]
 
 
-def generate_dates(start_date_str):
+def generate_dates(start_date_str: str):
     # Parse the start date from the given string
     start_date = datetime.strptime(start_date_str, '%Y%m%d')
     
@@ -144,8 +153,8 @@ def main():
             with conn.cursor() as cur:
                 for event in events:
                     cur.execute(
-                        'INSERT INTO Event (id, title, time, starttime, price, location, description, pictureurl) VALUES (gen_random_uuid(), %s, %s, %s, %s, %s, %s, %s)',
-                        (event.title, event.timestamp, datetime.strptime(day, '%Y%m%d'), event.price, event.location, event.description, event.picture))
+                        'INSERT INTO event_event (id, name, date_created, start_date, end_date, price, location, description, cover_uri, tags, organizer_id) VALUES (gen_random_uuid(), %s, NOW(), %s, %s, %s, %s, %s, %s, \'{}\', \'81dd6d6f-e5b4-4395-a2db-e06ee489b9f0\')',
+                        (event.name, event.start_date, event.end_date, event.price, event.location, event.description, event.cover_uri))
                 conn.commit()
             print('done')
 
