@@ -87,9 +87,9 @@ def extract_event(date: str, event: BeautifulSoup) -> Event:
         'div', class_='event-calendar__date-location__date').text.strip()
     start, end = to_timestamp(date, time)
     location = event.find(
-        'div', class_='event-calendar__date-location__location')
-    if location is not None and location.string is not None:
-        location = location.string.strip()
+        'div', class_='field--name-field-on-campus-location')
+    if location is not None:
+        location = location.text.strip()
     else:
         location = ''
     description = event.find('div', class_='event-calendar__summary')
