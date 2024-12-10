@@ -20,7 +20,7 @@ class SpecificEventView(APIView):
 
 class EventView(APIView):
     def get(self, request, page):
-        events = Event.objects.all()[page:(page + 15)]
+        events = Event.objects.all()[page:(page + 200)]
 
         serialized_events = []
 
