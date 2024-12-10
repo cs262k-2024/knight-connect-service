@@ -36,7 +36,7 @@ def check_day(day: str):
     assert 1 <= day_num <= 31, "day must be between 1 and 31"
 
 
-def to_timestamp(date: str, time: str) -> tuple[float, float]:
+def to_timestamp(date: str, time: str) -> tuple[datetime, datetime]:
     time_format = '%I:%M %p'
     start, end = time.split('–')
     start.strip()
@@ -88,8 +88,8 @@ def extract_event(date: str, event: BeautifulSoup) -> Event:
     start, end = to_timestamp(date, time)
     location = event.find(
         'div', class_='event-calendar__date-location__location')
-    if location is not None:
-        location = location.text.strip()
+    if location is not None and location.string is not None:
+        location = location.string.strip()
     else:
         location = ''
     description = event.find('div', class_='event-calendar__summary')
@@ -136,6 +136,46 @@ def generate_dates(start_date_str: str):
         # Move to the next day
         current_date += timedelta(days=1)
 
+def tag_event(event: Event):
+    print('Event:', event.name)
+    print('Location:', event.location)
+    print('Description:', event.description)
+    tag_options: list[str] = [
+        '🎤 Music',
+        '🏫 Education',
+        '🏈 Sports',
+        '🏘️ Residence Life',
+        '⛪️ Chapel',
+        '👫 Social Activities',
+        '🎨 Arts & Culture',
+        '🧬 Science & Tech',
+        '🗓️ Other',
+        '🩺 Health & Fitness',
+        '💼 Career & Business',
+        '🎮 Gaming',
+        '🎬 Film & Media',
+        '🍔 Food & Drink',
+    ]
+    for i, tag_option in enumerate(tag_options):
+        print(f'\t{i}. {tag_option}')
+    tags_str = input('Tags:')
+    while True:
+        tags: list[str] = []
+        for tag in tags_str.split(','):
+            tag = tag.strip()
+            try:
+                index = int(tag)
+            except Exception as e:
+                print(f'Error: {e}')
+                continue
+            if index < len(tag_options):
+                tags.append(tag_options[index])
+            else:
+                print('Index out of range. Try again!')
+                continue
+        break
+    return tags
+
 
 def main():
     start_day = input('start_day: ')
@@ -149,14 +189,16 @@ def main():
             day = next(date_gen)
             print(f'Getting day {day}... ', end='')
             events = get_events(day)
-            print(f'{len(events)} events... ', end='')
-            with conn.cursor() as cur:
-                for event in events:
+            print(f'{len(events)} events... ')
+            for event in events:
+                tags = tag_event(event)
+                with conn.cursor() as cur:
                     cur.execute(
-                        'INSERT INTO event_event (id, name, date_created, start_date, end_date, price, location, description, cover_uri, tags, organizer_id) VALUES (gen_random_uuid(), %s, NOW(), %s, %s, %s, %s, %s, %s, \'{}\', \'81dd6d6f-e5b4-4395-a2db-e06ee489b9f0\')',
-                        (event.name, event.start_date, event.end_date, event.price, event.location, event.description, event.cover_uri))
-                conn.commit()
-            print('done')
+                        'INSERT INTO event_event (id, name, date_created, start_date, end_date, price, location, description, cover_uri, tags, organizer_id) VALUES (gen_random_uuid(), %s, NOW(), %s, %s, %s, %s, %s, %s, %s, \'81dd6d6f-e5b4-4395-a2db-e06ee489b9f0\')',
+                        (event.name, event.start_date, event.end_date, event.price, event.location, event.description, event.cover_uri, tags))
+                    conn.commit()
+            print('day competed')
+        print('done')
 
 
 if __name__ == '__main__':
