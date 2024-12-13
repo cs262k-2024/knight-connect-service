@@ -18,3 +18,6 @@ class User(models.Model):
     bio = models.TextField()
 
     joined_events = models.ManyToManyField('event.Event', related_name='participants', blank=True)
+
+    friends = models.ManyToManyField('User', blank=True, related_name='friends+')
+    incoming_requests = models.ManyToManyField('User', blank=True, related_name='incoming_requests+')

@@ -1,9 +1,8 @@
-import json
-
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from user.models import User
+from user.serializers import UserSerializer
 
 from .models import Event
 from .forms import EventCreationForm
@@ -107,3 +106,19 @@ class EventsForUserView(APIView):
                     serialized_events.append(serialize_event(event))
 
         return Response({'data': serialized_events}, status=200)
+
+class ParticipantsView(APIView):
+    def get(self, request, event_id):
+        try:
+            event = Event.objects.get(id=event_id)
+        except Event.DoesNotExist:
+            return Response({'message': f'Event does not exist with id {event_id}'}, status=404)
+        
+        participants = event.participants.all()
+        serialized_participants = []
+
+        for participant in participants:
+            serialized_participants.append(UserSerializer(participant).data)
+
+        return Response({'data': serialized_participants}, status=200)
+    

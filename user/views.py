@@ -137,4 +137,119 @@ class EditUserView(APIView):
         serialized_user = serialize_user(user)
 
         return Response({'data': serialized_user}, status=200)
+
+class FriendsView(APIView):
+    def get(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'message': f'User not found with id {user_id}'}, status=404)
+        
+        friends = user.friends.all()
+
+        serialized_friends = []
+
+        for friend in friends:
+            serialized = serialize_user(friend)
+
+            serialized_friends.append(serialized)
+
+        return Response({'data': serialized_friends}, status=200)
+
+    def post(self, request):
+        '''
+        Accept friend request
+        '''
+        
+        data = request.data
+        user_id = data.get('user_id')
+        friend_id = data.get('friend_id')
+
+        if not user_id or not friend_id:
+            return Response({'message': 'Invalid request data'}, status=400)
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'message': f'User not found with id {user_id}'}, status=404)
+
+        try:
+            friend = User.objects.get(id=friend_id)
+        except User.DoesNotExist:
+            return Response({'message': f'Friend not found with id {friend_id}'}, status=404)
+
+        user.friends.add(friend)
+        friend.friends.add(user)
+
+        return Response({'data': serialize_user(user)}, status=200)
+
+class FriendRequestView(APIView):
+    def get(self, request, user_id):
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'message': f'User not found with id {user_id}'}, status=404)
+        
+        incoming_requests = user.incoming_requests.all()
+
+        serialized_requests = []
+
+        for request in incoming_requests:
+            serialized = serialize_user(request)
+
+            print(serialized)
+
+            serialized_requests.append(serialized)
+
+        return Response({'data': serialized_requests}, status=200)
+
+    def post(self, request):
+        '''
+        Make friend request
+        '''
+        data = request.data
+        
+        user_id = data.get('user_id')
+        friend_id = data.get('friend_id')
+
+        if not user_id or not friend_id:
+            return Response({'message': 'Invalid request data'}, status=400)
+        
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'message': f'User not found with id {user_id}'}, status=404)
+        
+        try:
+            friend = User.objects.get(id=friend_id)
+        except User.DoesNotExist:
+            return Response({'message': f'Friend not found with id {friend_id}'}, status=404)
+        
+        friend.incoming_requests.add(user)
+
+        return Response({'data': serialize_user(user)}, status=200)
+
+class RejectFriend(APIView):
+    def post(self, request):
+        data = request.data
+        
+        user_id = data.get('user_id')
+        friend_id = data.get('friend_id')
+
+        if not user_id or not friend_id:
+            return Response({'message': 'Invalid request data'}, status=400)
+        
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'message': f'User not found with id {user_id}'}, status=404)
+        
+        try:
+            friend = User.objects.get(id=friend_id)
+        except User.DoesNotExist:
+            return Response({'message': f'Friend not found with id {friend_id}'}, status=404)
+        
+        user.incoming_requests.remove(friend)
+
+        return Response({'data': serialize_user(user)}, status=200)
     

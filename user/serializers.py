@@ -8,6 +8,8 @@ def serialize_user(user: User):
     return {
         **serialized_user,
         'joined_events': [str(event.id) for event in user.joined_events.all()],
+        'friends': [str(user.id) for user in user.friends.all()],
+        'incoming_requests': [str(user.id) for user in user.incoming_requests.all()],
     }
 
 class UserSerializer(serializers.ModelSerializer):
